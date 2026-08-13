@@ -1,0 +1,52 @@
+name: Stale Task Check
+
+on:
+  schedule:
+    # Runs every 6 hours. Edit this cron expression to change the schedule.
+    - cron: '0 */6 * * *'
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  check-and-alert:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        working-directory: automation
+        run: npm install
+
+      - name: Check for stale tasks and generate alert image
+        working-directory: automation
+        env:
+          ADMIN_SHEET_ID: ${{ secrets.ADMIN_SHEET_ID }}
+          GOOGLE_SERVICE_ACCOUNT_JSON_BASE64: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON_BASE64 }}
+        run: node checkStaleTasks.js
+
+      - name: Commit and push alert image
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add alerts/
+          git diff --cached --quiet && echo "No changes to commit" || git commit -m "Update stale task alert [skip ci]"
+          git push
+
+      - name: Send WhatsApp alert via Interakt
+        working-directory: automation
+        env:
+          INTERAKT_API_KEY: ${{ secrets.INTERAKT_API_KEY }}
+          ADMIN_WHATSAPP_NUMBER: ${{ secrets.ADMIN_WHATSAPP_NUMBER }}
+          ADMIN_COUNTRY_CODE: ${{ secrets.ADMIN_COUNTRY_CODE }}
+          PUBLIC_IMAGE_URL: ${{ secrets.PUBLIC_IMAGE_URL }}
+          WHATSAPP_TEMPLATE_NAME: ${{ secrets.WHATSAPP_TEMPLATE_NAME }}
+        run: node sendWhatsAppAlert.js
