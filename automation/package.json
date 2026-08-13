@@ -2,13 +2,10 @@
   "name": "task-report-automation",
   "version": "1.0.0",
   "private": true,
+  "description": "Stale task detection and WhatsApp alert automation for Task Report",
   "dependencies": {
-    "googleapis": "^126.0.0",
-    "axios": "^1.6.0",
+    "axios": "^1.7.7",
+    "googleapis": "^144.0.0",
     "node-html-to-image": "^4.0.0"
-  },
-  "scripts": {
-    "check": "node checkStaleTasks.js",
-    "send": "node sendWhatsAppAlert.js"
   }
 }
