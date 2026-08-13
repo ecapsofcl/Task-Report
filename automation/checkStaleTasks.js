@@ -118,6 +118,9 @@ async function main() {
   await nodeHtmlToImage({
     output: path.join(alertsDir, 'latest-alert.png'),
     html: html
+    puppeteerArgs: {
+      args: ['--no-sandbox', '--disable-setuid-sandbox']
+    }
   });
   console.log('Alert image generated with ' + staleTasks.length + ' stale task(s).');
 }
