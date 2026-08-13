@@ -1,0 +1,14 @@
+{
+  "name": "task-report-automation",
+  "version": "1.0.0",
+  "private": true,
+  "dependencies": {
+    "googleapis": "^126.0.0",
+    "axios": "^1.6.0",
+    "node-html-to-image": "^4.0.0"
+  },
+  "scripts": {
+    "check": "node checkStaleTasks.js",
+    "send": "node sendWhatsAppAlert.js"
+  }
+}
