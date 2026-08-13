@@ -95,17 +95,24 @@ async function main() {
     return;
   }
   const rowsHtml = staleTasks.map(function(t) {
-    return '<tr><td>' + t.fullName + '</td><td>' + t.taskText + '</td><td>' + t.status + '</td><td>' + t.daysSince + ' day(s)</td></tr>';
+    return '<tr>' +
+      '<td>' + (t.fullName || '-') + '</td>' +
+      '<td>' + (t.taskText || '-') + '</td>' +
+      '<td>' + (t.dueDate || '-') + '</td>' +
+      '<td>' + (t.assignedDate || '-') + '</td>' +
+      '<td>' + (t.status || '-') + '</td>' +
+      '<td>' + (t.statusUpdatedOn || '-') + '</td>' +
+      '</tr>';
   }).join('');
   const html =
     '<html><head><style>' +
     'body{font-family:Arial,sans-serif;padding:20px;background:#fff;}' +
-    'h2{color:#c0392b;} table{border-collapse:collapse;width:700px;}' +
-    'th,td{border:1px solid #999;padding:8px;text-align:left;font-size:14px;}' +
+    'h2{color:#c0392b;} table{border-collapse:collapse;width:900px;}' +
+    'th,td{border:1px solid #999;padding:8px;text-align:left;font-size:13px;}' +
     'th{background:#1a5276;color:#fff;}' +
     '</style></head><body>' +
     '<h2>Stale Task Alert (' + staleTasks.length + ' task(s) unchanged for 2+ days)</h2>' +
-    '<table><tr><th>Owner</th><th>Task</th><th>Status</th><th>Days Unchanged</th></tr>' + rowsHtml + '</table>' +
+    '<table><tr><th>Owner</th><th>Task</th><th>Due Date</th><th>Assigned Date</th><th>Status</th><th>Status Updated On</th></tr>' + rowsHtml + '</table>' +
     '<p>Generated: ' + new Date().toString() + '</p>' +
     '</body></html>';
   await nodeHtmlToImage({
