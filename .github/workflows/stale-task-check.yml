@@ -47,3 +47,5 @@ jobs:
           ADMIN_WHATSAPP_NUMBER: ${{ secrets.ADMIN_WHATSAPP_NUMBER }}
           ADMIN_COUNTRY_CODE: ${{ secrets.ADMIN_COUNTRY_CODE }}
           PUBLIC_IMAGE_URL: ${{ secrets.PUBLIC_IMAGE_URL }}
+          WHATSAPP_TEMPLATE_NAME: ${{ secrets.WHATSAPP_TEMPLATE_NAME }}
+          run: node sendWhatsAppAlert.js
