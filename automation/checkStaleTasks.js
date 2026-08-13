@@ -27,9 +27,6 @@ async function readSheetValues(sheets, spreadsheetId, range) {
     return [];
   }
 }
-// Joins a list of values into a single WhatsApp-safe string.
-// WhatsApp template parameters cannot contain newlines/tabs, so we join with "; ".
-// Truncates to keep the combined message from becoming unreasonably long.
 function joinField(values, maxLen) {
   const joined = values.map(function(v) { return (v === undefined || v === null || v === '') ? '-' : String(v); }).join('; ');
   if (maxLen && joined.length > maxLen) {
@@ -76,55 +73,9 @@ async function main() {
   const alertsDir = path.join(__dirname, '..', 'alerts');
   fs.mkdirSync(alertsDir, { recursive: true });
 
-  // Build the 6 combined fields the WhatsApp template expects, in order:
-  // Task Assigned Date, Task, Priority, Due Date, Status, Status Updated On
   const summary = {
     count: staleTasks.length,
     generatedAt: new Date().toISOString(),
     assignedDates: joinField(staleTasks.map(function(t) { return t.assignedDate; }), 300),
     tasks: joinField(staleTasks.map(function(t) { return t.taskText; }), 300),
-    priorities: joinField(staleTasks.map(function(t) { return t.priority; }), 150),
-    dueDates: joinField(staleTasks.map(function(t) { return t.dueDate; }), 300),
-    statuses: joinField(staleTasks.map(function(t) { return t.status; }), 150),
-    statusUpdatedOns: joinField(staleTasks.map(function(t) { return t.statusUpdatedOn; }), 300)
-  };
-  fs.writeFileSync(path.join(alertsDir, 'summary.json'), JSON.stringify(summary));
-
-  if (staleTasks.length === 0) {
-    console.log('No stale tasks found. Skipping image generation.');
-    return;
-  }
-  const rowsHtml = staleTasks.map(function(t) {
-    return '<tr>' +
-      '<td>' + (t.fullName || '-') + '</td>' +
-      '<td>' + (t.taskText || '-') + '</td>' +
-      '<td>' + (t.dueDate || '-') + '</td>' +
-      '<td>' + (t.assignedDate || '-') + '</td>' +
-      '<td>' + (t.status || '-') + '</td>' +
-      '<td>' + (t.statusUpdatedOn || '-') + '</td>' +
-      '</tr>';
-  }).join('');
-  const html =
-    '<html><head><style>' +
-    'body{font-family:Arial,sans-serif;padding:20px;background:#fff;}' +
-    'h2{color:#c0392b;} table{border-collapse:collapse;width:900px;}' +
-    'th,td{border:1px solid #999;padding:8px;text-align:left;font-size:13px;}' +
-    'th{background:#1a5276;color:#fff;}' +
-    '</style></head><body>' +
-    '<h2>Stale Task Alert (' + staleTasks.length + ' task(s) unchanged for 2+ days)</h2>' +
-    '<table><tr><th>Owner</th><th>Task</th><th>Due Date</th><th>Assigned Date</th><th>Status</th><th>Status Updated On</th></tr>' + rowsHtml + '</table>' +
-    '<p>Generated: ' + new Date().toString() + '</p>' +
-    '</body></html>';
-  await nodeHtmlToImage({
-    output: path.join(alertsDir, 'latest-alert.png'),
-    html: html
-    puppeteerArgs: {
-      args: ['--no-sandbox', '--disable-setuid-sandbox']
-    }
-  });
-  console.log('Alert image generated with ' + staleTasks.length + ' stale task(s).');
-}
-main().catch(function(err) {
-  console.error(err);
-  process.exit(1);
-});
+    priorities: joinField(staleTasks.map(fun
