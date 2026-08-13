@@ -1,17 +1,14 @@
-// Sends the generated alert image to the admin's WhatsApp via Interakt.
-// NOTE: I could not access Interakt's live API docs during development, so
-// verify the endpoint/field names below against your Interakt account's
-// current API reference before relying on this in production.
-
+// Sends the generated alert image + task details to the admin's WhatsApp via Interakt.
+// Verified against Interakt's documented Send WhatsApp Template API
+// (https://api.interakt.ai/v1/public/message/, Basic-auth with API key).
 const fs = require('fs');
 const path = require('path');
 const axios = require('axios');
-
 const INTERAKT_API_KEY = process.env.INTERAKT_API_KEY;
 const ADMIN_WHATSAPP_NUMBER = process.env.ADMIN_WHATSAPP_NUMBER;
 const ADMIN_COUNTRY_CODE = process.env.ADMIN_COUNTRY_CODE || '+91';
 const PUBLIC_IMAGE_URL = process.env.PUBLIC_IMAGE_URL;
-const WHATSAPP_TEMPLATE_NAME = process.env.WHATSAPP_TEMPLATE_NAME || 'stale_task_alert';
+const WHATSAPP_TEMPLATE_NAME = process.env.WHATSAPP_TEMPLATE_NAME || 'task_stale_alert';
 
 async function main() {
   const summaryPath = path.join(__dirname, '..', 'alerts', 'summary.json');
@@ -25,6 +22,9 @@ async function main() {
     return;
   }
 
+  // Template body placeholders, in order:
+  // {{1}} Task Assigned Date, {{2}} Task, {{3}} Priority,
+  // {{4}} Due Date, {{5}} Status, {{6}} Status Updated On
   const body = {
     countryCode: ADMIN_COUNTRY_CODE,
     phoneNumber: ADMIN_WHATSAPP_NUMBER,
@@ -33,7 +33,14 @@ async function main() {
       name: WHATSAPP_TEMPLATE_NAME,
       languageCode: 'en',
       headerValues: [PUBLIC_IMAGE_URL],
-      bodyValues: [String(summary.count)]
+      bodyValues: [
+        summary.assignedDates,
+        summary.tasks,
+        summary.priorities,
+        summary.dueDates,
+        summary.statuses,
+        summary.statusUpdatedOns
+      ]
     }
   };
 
@@ -43,10 +50,8 @@ async function main() {
       'Content-Type': 'application/json'
     }
   });
-
   console.log('Interakt response:', res.status, JSON.stringify(res.data));
 }
-
 main().catch(function(err) {
   console.error('Failed to send WhatsApp alert:', err.response ? JSON.stringify(err.response.data) : err.message);
   process.exit(1);
