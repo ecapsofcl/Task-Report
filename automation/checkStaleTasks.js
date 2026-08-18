@@ -136,7 +136,11 @@ async function main() {
     output: path.join(alertsDir, 'latest-alert.png'),
     html: html,
     puppeteerArgs: {
-      args: ['--no-sandbox', '--disable-setuid-sandbox']
+      args: ['--no-sandbox', '--disable-setuid-sandbox'],
+      defaultViewport: {
+        width: 1000,
+        height: 800
+      }
     }
   });
 
