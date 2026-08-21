@@ -85,7 +85,7 @@ async function loadDashboard() {
   chartInstance = new Chart(ctx, {
     type: 'doughnut',
     data: { labels: labels, datasets: [{ data: data, backgroundColor: ['#e74c3c','#f39c12','#3498db','#9b59b6','#1abc9c','#2ecc71'] }] },
-    options: { plugins: { legend: { position: 'bottom' } } }
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
   });
 
   const countsHtml = '<table><tr><th>Stage</th><th>Count</th></tr>' +
