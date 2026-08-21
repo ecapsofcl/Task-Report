@@ -8,7 +8,6 @@
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-
 <div id="loginView" class="center-box">
   <h2>Task Report Login</h2>
   <input id="loginUsername" placeholder="Username">
@@ -16,7 +15,6 @@
   <button onclick="handleLogin()">Log In</button>
   <p id="loginError" class="error"></p>
 </div>
-
 <div id="appView" class="hidden">
   <nav>
     <span id="welcomeText"></span>
@@ -26,7 +24,6 @@
     <button onclick="openChangePassword()">Change Password</button>
     <button onclick="logout()">Log Out</button>
   </nav>
-
   <section id="dashboardView">
     <h2>Dashboard</h2>
     <div class="selectors">
@@ -36,12 +33,13 @@
       <button onclick="loadDashboard()">Load</button>
     </div>
     <div class="dash-grid">
-      <canvas id="statusChart" width="300" height="300"></canvas>
+      <div style="position: relative; width: 100%; max-width: 350px; height: 300px; margin: 0 auto;">
+        <canvas id="statusChart"></canvas>
+      </div>
       <div id="stageCountsTable"></div>
       <div id="overdueBox"></div>
     </div>
   </section>
-
   <section id="tasksView" class="hidden">
     <h2>Tasks</h2>
     <div class="selectors">
@@ -60,7 +58,6 @@
     <input id="newTaskDueDate" type="date">
     <button onclick="submitAddTask()">Add Task</button>
   </section>
-
   <section id="adminView" class="hidden">
     <h2>Admin - Manage Users</h2>
     <table id="usersTable">
@@ -75,7 +72,6 @@
     <button onclick="submitCreateUser()">Create User</button>
   </section>
 </div>
-
 <div id="changePasswordModal" class="modal hidden">
   <div class="modal-content">
     <h3>Change Password</h3>
@@ -85,7 +81,6 @@
     <button onclick="closeChangePassword()">Cancel</button>
   </div>
 </div>
-
 <script src="js/config.js"></script>
 <script src="js/api.js"></script>
 <script src="js/app.js"></script>
