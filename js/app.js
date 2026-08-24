@@ -41,6 +41,10 @@ async function handleLogin() {
     document.getElementById('dashUserSelect').classList.remove('hidden');
     document.getElementById('taskUserSelect').classList.remove('hidden');
     await populateUserSelectors();
+  } else {
+    document.getElementById('adminNavBtn').classList.add('hidden');
+    document.getElementById('dashUserSelect').classList.add('hidden');
+    document.getElementById('taskUserSelect').classList.add('hidden');
   }
   populateMonthYear('dashMonthSelect', 'dashYearSelect');
   populateMonthYear('taskMonthSelect', 'taskYearSelect');
@@ -53,6 +57,11 @@ function logout() {
   document.getElementById('appView').classList.add('hidden');
   document.getElementById('loginView').classList.remove('hidden');
   document.getElementById('loginPassword').value = '';
+  document.getElementById('adminNavBtn').classList.add('hidden');
+  document.getElementById('dashUserSelect').classList.add('hidden');
+  document.getElementById('taskUserSelect').classList.add('hidden');
+  document.getElementById('dashUserSelect').innerHTML = '';
+  document.getElementById('taskUserSelect').innerHTML = '';
 }
 
 function showView(name) {
