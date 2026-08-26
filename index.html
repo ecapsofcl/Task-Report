@@ -49,9 +49,10 @@
       <button onclick="loadTasks()">Load</button>
     </div>
     <table id="tasksTable">
-      <thead><tr><th>S.No</th><th>Assigned</th><th>Task</th><th>Priority</th><th>Due Date</th><th>Status</th><th>Days on Status</th><th>%</th></tr></thead>
+      <thead><tr><th>S.No</th><th>Assigned</th><th>Task</th><th>Priority</th><th>Due Date</th><th>Status</th><th>Days on Status</th><th>%</th><th>Remarks</th><th>Actions</th></tr></thead>
       <tbody></tbody>
     </table>
+    <button id="saveTasksBtn" onclick="submitBatchSave()" disabled>Save Changes</button>
     <h3>Add Task</h3>
     <input id="newTaskText" placeholder="Task description">
     <select id="newTaskPriority"><option>Low</option><option>Medium</option><option>High</option></select>
