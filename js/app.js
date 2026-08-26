@@ -107,26 +107,129 @@ async function loadDashboard() {
     (overdue.length ? '<ul>' + overdue.map(function(t){ return '<li>' + t.task + ' (due ' + formatDate(t.dueDate) + ')</li>'; }).join('') + '</ul>' : '<p>None</p>');
 }
 
+let lastTasksData = [];
+let editingRows = new Set();
+let pendingChanges = {};
+
 async function loadTasks() {
   const monthYear = currentMonthYearLabel('taskMonthSelect', 'taskYearSelect');
   const targetUsername = currentTargetUser('taskUserSelect');
   const res = await Api.listTasks(state.token, targetUsername, monthYear);
   if (!res.success) { alert(res.error); return; }
+  lastTasksData = res.tasks;
+  editingRows.clear();
+  pendingChanges = {};
+  renderTasksTable();
+  updateSaveButtonState();
+}
 
+function renderTasksTable() {
   const tbody = document.querySelector('#tasksTable tbody');
-  tbody.innerHTML = res.tasks.map(function(t){
+  tbody.innerHTML = lastTasksData.map(function(t){
     const rowClass = t.status === 'Completed' ? 'status-completed' : (t.overdue ? 'status-overdue' : '');
+    const isEditing = editingRows.has(t.sNo);
+    const changes = pendingChanges[t.sNo] || {};
+
+    let taskCell, dueDateCell, remarksCell, actionCell;
+
+    if (isEditing) {
+      const taskVal = changes.task !== undefined ? changes.task : t.task;
+      const dueDateVal = changes.dueDate !== undefined ? changes.dueDate : formatDateForInput(t.dueDate);
+      const remarksVal = changes.remarks !== undefined ? changes.remarks : (t.remarks || '');
+
+      taskCell = '<input type="text" value="' + escapeHtml(taskVal) + '" oninput="stageChange(' + t.sNo + ", 'task', this.value)\">";
+      dueDateCell = '<input type="date" value="' + dueDateVal + '" onchange="stageChange(' + t.sNo + ", 'dueDate', this.value)\">";
+      remarksCell = '<textarea rows="2" oninput="stageChange(' + t.sNo + ", 'remarks', this.value)\">" + escapeHtml(remarksVal) + '</textarea>';
+      actionCell = '<button onclick="cancelEditRow(' + t.sNo + ')">Cancel</button>';
+    } else {
+      taskCell = escapeHtml(t.task);
+      dueDateCell = formatDate(t.dueDate);
+      remarksCell = '<span class="remarks-text">' + escapeHtml(t.remarks || '') + '</span>';
+      actionCell = '<button onclick="toggleEditRow(' + t.sNo + ')">Edit</button>';
+    }
+
     return '<tr class="' + rowClass + '">' +
       '<td>' + t.sNo + '</td>' +
       '<td>' + formatDate(t.assignedDate) + '</td>' +
-      '<td>' + t.task + '</td>' +
+      '<td>' + taskCell + '</td>' +
       '<td>' + t.priority + '</td>' +
-      '<td>' + formatDate(t.dueDate) + '</td>' +
+      '<td>' + dueDateCell + '</td>' +
       '<td>' + statusDropdown(t.sNo, t.status) + '</td>' +
       '<td>' + (t.daysSinceUpdate !== null ? t.daysSinceUpdate + ' day(s)' : '-') + '</td>' +
       '<td>' + t.percent + '%</td>' +
+      '<td>' + remarksCell + '</td>' +
+      '<td>' + actionCell + '</td>' +
       '</tr>';
   }).join('');
+}
+
+function toggleEditRow(sNo) {
+  editingRows.add(sNo);
+  renderTasksTable();
+}
+
+function cancelEditRow(sNo) {
+  editingRows.delete(sNo);
+  delete pendingChanges[sNo];
+  renderTasksTable();
+  updateSaveButtonState();
+}
+
+function stageChange(sNo, field, value) {
+  if (!pendingChanges[sNo]) pendingChanges[sNo] = {};
+  pendingChanges[sNo][field] = value;
+  updateSaveButtonState();
+}
+
+function updateSaveButtonState() {
+  const btn = document.getElementById('saveTasksBtn');
+  if (!btn) return;
+  btn.disabled = Object.keys(pendingChanges).length === 0;
+}
+
+async function submitBatchSave() {
+  const monthYear = currentMonthYearLabel('taskMonthSelect', 'taskYearSelect');
+  const targetUsername = currentTargetUser('taskUserSelect');
+  const sNos = Object.keys(pendingChanges);
+  if (sNos.length === 0) return;
+
+  const btn = document.getElementById('saveTasksBtn');
+  btn.disabled = true;
+  const originalLabel = btn.innerText;
+  btn.innerText = 'Saving...';
+
+  let hadError = false;
+  for (let i = 0; i < sNos.length; i++) {
+    const sNo = Number(sNos[i]);
+    const updates = pendingChanges[sNo];
+    const res = await Api.updateTask(state.token, targetUsername, monthYear, sNo, updates);
+    if (!res.success) {
+      hadError = true;
+      alert('Failed to save row ' + sNo + ': ' + res.error);
+    }
+  }
+
+  btn.innerText = originalLabel;
+  await loadTasks();
+  if (hadError) updateSaveButtonState();
+}
+
+function escapeHtml(str) {
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function formatDateForInput(d) {
+  if (!d) return '';
+  const date = new Date(d);
+  if (isNaN(date)) return '';
+  const mm = String(date.getMonth() + 1).padStart(2, '0');
+  const dd = String(date.getDate()).padStart(2, '0');
+  return date.getFullYear() + '-' + mm + '-' + dd;
 }
 
 function statusDropdown(sNo, currentStatus) {
@@ -136,6 +239,10 @@ function statusDropdown(sNo, currentStatus) {
 }
 
 async function submitStatusChange(sNo, newStatus) {
+  if (Object.keys(pendingChanges).length > 0) {
+    const proceed = confirm('You have unsaved edits on other rows. Changing status now will discard them. Continue?');
+    if (!proceed) { renderTasksTable(); return; }
+  }
   const monthYear = currentMonthYearLabel('taskMonthSelect', 'taskYearSelect');
   const targetUsername = currentTargetUser('taskUserSelect');
   const res = await Api.updateTask(state.token, targetUsername, monthYear, sNo, { status: newStatus });
