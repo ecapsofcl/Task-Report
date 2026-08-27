@@ -49,6 +49,9 @@ async function main() {
   const users = await readSheetValues(sheets, ADMIN_SHEET_ID, 'Users!A2:G');
   const monthYear = currentMonthYearLabel();
   const staleTasks = [];
+  const overdueTasks = [];
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
 
   for (const row of users) {
     const fullName = row[4];
@@ -64,21 +67,50 @@ async function main() {
       const dueDate = t[4];
       const taskStatus = t[5];
       const statusUpdatedOn = t[6];
-      if (!taskText || taskStatus === 'Completed' || !statusUpdatedOn) continue;
+      if (!taskText || taskStatus === 'Completed') continue;
 
-      const updatedDate = new Date(statusUpdatedOn);
-      const daysSince = Math.floor((Date.now() - updatedDate.getTime()) / 86400000);
-      if (daysSince >= STALE_DAYS_THRESHOLD) {
-        staleTasks.push({
+      // Stale check: same status for 2+ days.
+      if (statusUpdatedOn) {
+        const updatedDate = new Date(statusUpdatedOn);
+        const daysSince = Math.floor((Date.now() - updatedDate.getTime()) / 86400000);
+        if (daysSince >= STALE_DAYS_THRESHOLD) {
+          staleTasks.push({
+            fullName: fullName,
+            assignedDate: assignedDate,
+            taskText: taskText,
+            priority: priority,
+            dueDate: dueDate,
+            status: taskStatus,
+            statusUpdatedOn: statusUpdatedOn,
+            daysSince: daysSince
+          });
+        }
+      }
+
+      // Overdue check: due date has passed, OR no due date was ever set.
+      if (!dueDate) {
+        overdueTasks.push({
           fullName: fullName,
-          assignedDate: assignedDate,
           taskText: taskText,
-          priority: priority,
-          dueDate: dueDate,
-          status: taskStatus,
-          statusUpdatedOn: statusUpdatedOn,
-          daysSince: daysSince
+          dueDate: null,
+          daysOverdue: null, // Signals "no due date" in the output.
+          status: taskStatus
         });
+      } else {
+        const due = new Date(dueDate);
+        if (!isNaN(due)) {
+          due.setHours(0, 0, 0, 0);
+          if (due <= today) {
+            const daysOverdue = Math.floor((today - due) / 86400000);
+            overdueTasks.push({
+              fullName: fullName,
+              taskText: taskText,
+              dueDate: dueDate,
+              daysOverdue: daysOverdue,
+              status: taskStatus
+            });
+          }
+        }
       }
     }
   }
@@ -86,6 +118,11 @@ async function main() {
   const alertsDir = path.join(__dirname, '..', 'alerts');
   fs.mkdirSync(alertsDir, { recursive: true });
 
+  await writeStaleAlert(alertsDir, staleTasks);
+  await writeOverdueAlert(alertsDir, overdueTasks);
+}
+
+async function writeStaleAlert(alertsDir, staleTasks) {
   const summary = {
     count: staleTasks.length,
     generatedAt: new Date().toISOString(),
@@ -99,7 +136,7 @@ async function main() {
   fs.writeFileSync(path.join(alertsDir, 'summary.json'), JSON.stringify(summary));
 
   if (staleTasks.length === 0) {
-    console.log('No stale tasks found. Skipping image generation.');
+    console.log('No stale tasks found. Skipping stale image generation.');
     return;
   }
 
@@ -144,7 +181,74 @@ async function main() {
     }
   });
 
-  console.log('Alert image generated with ' + staleTasks.length + ' stale task(s).');
+  console.log('Stale alert image generated with ' + staleTasks.length + ' stale task(s).');
+}
+
+async function writeOverdueAlert(alertsDir, overdueTasks) {
+  const formatDateShort = function (d) {
+    if (!d) return '-';
+    const date = new Date(d);
+    if (isNaN(date)) return String(d);
+    return (date.getMonth() + 1) + '/' + date.getDate() + '/' + date.getFullYear();
+  };
+
+  const summary = {
+    count: overdueTasks.length,
+    generatedAt: new Date().toISOString(),
+    owners: joinField(overdueTasks.map(function (t) { return t.fullName; }), 300),
+    tasks: joinField(overdueTasks.map(function (t) { return t.taskText; }), 300),
+    dueDates: joinField(overdueTasks.map(function (t) { return t.dueDate ? formatDateShort(t.dueDate) : 'Not set'; }), 300),
+    daysOverdues: joinField(overdueTasks.map(function (t) { return t.daysOverdue === null ? 'No due date' : t.daysOverdue + ' day(s)'; }), 200),
+    statuses: joinField(overdueTasks.map(function (t) { return t.status; }), 150)
+  };
+  fs.writeFileSync(path.join(alertsDir, 'overdue-summary.json'), JSON.stringify(summary));
+
+  if (overdueTasks.length === 0) {
+    console.log('No overdue tasks found. Skipping overdue image generation.');
+    return;
+  }
+
+  const rowsHtml = overdueTasks
+    .map(function (t) {
+      return (
+        '<tr>' +
+        '<td>' + (t.fullName || '-') + '</td>' +
+        '<td>' + (t.taskText || '-') + '</td>' +
+        '<td>' + (t.dueDate ? formatDateShort(t.dueDate) : 'Not set') + '</td>' +
+        '<td>' + (t.daysOverdue === null ? 'No due date' : t.daysOverdue + ' day(s)') + '</td>' +
+        '<td>' + (t.status || '-') + '</td>' +
+        '</tr>'
+      );
+    })
+    .join('');
+
+  const html =
+    '<html><head><style>' +
+    'body{font-family:Arial,sans-serif;padding:20px;background:#fff;}' +
+    'h2{color:#c0392b;} table{border-collapse:collapse;width:800px;}' +
+    'th,td{border:1px solid #999;padding:8px;text-align:left;font-size:13px;}' +
+    'th{background:#8e2de2;color:#fff;}' +
+    '</style></head><body>' +
+    '<h2>Overdue &amp; Missing Due-Date Alert (' + overdueTasks.length + ' task(s))</h2>' +
+    '<table><tr><th>Owner</th><th>Task</th><th>Due Date</th><th>Days Overdue</th><th>Status</th></tr>' +
+    rowsHtml +
+    '</table>' +
+    '<p>Generated: ' + new Date().toString() + '</p>' +
+    '</body></html>';
+
+  await nodeHtmlToImage({
+    output: path.join(alertsDir, 'overdue-alert.png'),
+    html: html,
+    puppeteerArgs: {
+      args: ['--no-sandbox', '--disable-setuid-sandbox'],
+      defaultViewport: {
+        width: 900,
+        height: 800
+      }
+    }
+  });
+
+  console.log('Overdue alert image generated with ' + overdueTasks.length + ' overdue task(s).');
 }
 
 main().catch(function (err) {
