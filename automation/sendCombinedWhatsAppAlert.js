@@ -18,7 +18,7 @@ function parseNumbers(raw) {
 
 async function sendToNumber(phoneNumber, summary) {
   // Template body placeholders, in order:
-  // {{1}} Type, {{2}} Owner, {{3}} Task, {{4}} Due Date, {{5}} Status, {{6}} Detail
+  // {{1}} Stale count, {{2}} Overdue count, {{3}} No Due Date count, {{4}} Total count
   const body = {
     countryCode: ADMIN_COUNTRY_CODE,
     phoneNumber: phoneNumber,
@@ -28,12 +28,10 @@ async function sendToNumber(phoneNumber, summary) {
       languageCode: 'en',
       headerValues: [COMBINED_PUBLIC_IMAGE_URL],
       bodyValues: [
-        summary.categories,
-        summary.owners,
-        summary.tasks,
-        summary.dueDates,
-        summary.statuses,
-        summary.details
+        String(summary.staleCount),
+        String(summary.overdueCount),
+        String(summary.noDueDateCount),
+        String(summary.count)
       ]
     }
   };
