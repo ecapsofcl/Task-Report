@@ -31,18 +31,6 @@ async function readSheetValues(sheets, spreadsheetId, range) {
   }
 }
 
-function joinField(values, maxLen) {
-  const joined = values
-    .map(function (v) {
-      return v === undefined || v === null || v === '' ? '-' : String(v);
-    })
-    .join('; ');
-  if (maxLen && joined.length > maxLen) {
-    return joined.slice(0, maxLen - 3) + '...';
-  }
-  return joined;
-}
-
 function formatDateShort(d) {
   if (!d) return 'Not set';
   const date = new Date(d);
@@ -127,12 +115,9 @@ async function main() {
   const summary = {
     count: issues.length,
     generatedAt: new Date().toISOString(),
-    categories: joinField(issues.map(function (i) { return i.category; }), 150),
-    owners: joinField(issues.map(function (i) { return i.fullName; }), 300),
-    tasks: joinField(issues.map(function (i) { return i.taskText; }), 300),
-    dueDates: joinField(issues.map(function (i) { return formatDateShort(i.dueDate); }), 300),
-    statuses: joinField(issues.map(function (i) { return i.status; }), 150),
-    details: joinField(issues.map(function (i) { return i.detail; }), 300)
+    staleCount: issues.filter(function (i) { return i.category === 'Stale'; }).length,
+    overdueCount: issues.filter(function (i) { return i.category === 'Overdue'; }).length,
+    noDueDateCount: issues.filter(function (i) { return i.category === 'No Due Date'; }).length
   };
   fs.writeFileSync(path.join(alertsDir, 'combined-summary.json'), JSON.stringify(summary));
 
